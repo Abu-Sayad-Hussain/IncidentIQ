@@ -1,0 +1,54 @@
+{
+  "name": "log-processor-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/log-processor-service/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "generatePackageJson": true,
+        "outputPath": "dist/apps/log-processor-service",
+        "main": "apps/log-processor-service/src/main.ts",
+        "tsConfig": "apps/log-processor-service/tsconfig.app.json",
+        "assets": [
+          "apps/log-processor-service/src/assets"
+        ],
+        "webpackConfig": "apps/log-processor-service/webpack.config.js"
+      },
+      "configurations": {
+        "production": {
+          "optimization": true,
+          "extractLicenses": true,
+          "inspect": false
+        },
+        "development": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "dependsOn": [
+        "build"
+      ],
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "log-processor-service:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "log-processor-service:build:development"
+        },
+        "production": {
+          "buildTarget": "log-processor-service:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}

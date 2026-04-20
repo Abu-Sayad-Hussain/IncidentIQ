@@ -1,0 +1,9 @@
+{
+  "name": "elastic-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/elastic-client/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project elastic-client --web",
+  "targets": {}
+}

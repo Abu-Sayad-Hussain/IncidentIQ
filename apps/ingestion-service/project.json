@@ -1,0 +1,54 @@
+{
+  "name": "ingestion-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/ingestion-service/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "generatePackageJson": true,
+        "outputPath": "dist/apps/ingestion-service",
+        "main": "apps/ingestion-service/src/main.ts",
+        "tsConfig": "apps/ingestion-service/tsconfig.app.json",
+        "assets": [
+          "apps/ingestion-service/src/assets"
+        ],
+        "webpackConfig": "apps/ingestion-service/webpack.config.js"
+      },
+      "configurations": {
+        "production": {
+          "optimization": true,
+          "extractLicenses": true,
+          "inspect": false
+        },
+        "development": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "dependsOn": [
+        "build"
+      ],
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "ingestion-service:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "ingestion-service:build:development"
+        },
+        "production": {
+          "buildTarget": "ingestion-service:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
