@@ -1,0 +1,54 @@
+{
+  "name": "anomaly-detection-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/anomaly-detection-service/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "generatePackageJson": true,
+        "outputPath": "dist/apps/anomaly-detection-service",
+        "main": "apps/anomaly-detection-service/src/main.ts",
+        "tsConfig": "apps/anomaly-detection-service/tsconfig.app.json",
+        "assets": [
+          "apps/anomaly-detection-service/src/assets"
+        ],
+        "webpackConfig": "apps/anomaly-detection-service/webpack.config.js"
+      },
+      "configurations": {
+        "production": {
+          "optimization": true,
+          "extractLicenses": true,
+          "inspect": false
+        },
+        "development": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "dependsOn": [
+        "build"
+      ],
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "anomaly-detection-service:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "anomaly-detection-service:build:development"
+        },
+        "production": {
+          "buildTarget": "anomaly-detection-service:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
