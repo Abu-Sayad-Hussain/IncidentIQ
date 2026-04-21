@@ -40,7 +40,8 @@
       },
       "exclude": [
         "apps/ingestion-service-e2e/**/*",
-        "apps/log-processor-service-e2e/**/*"
+        "apps/log-processor-service-e2e/**/*",
+        "apps/anomaly-detection-service-e2e/**/*"
       ]
     },
     {
