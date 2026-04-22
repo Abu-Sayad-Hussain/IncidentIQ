@@ -1,0 +1,54 @@
+{
+  "name": "incident-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/incident-service/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "generatePackageJson": true,
+        "outputPath": "dist/apps/incident-service",
+        "main": "apps/incident-service/src/main.ts",
+        "tsConfig": "apps/incident-service/tsconfig.app.json",
+        "assets": [
+          "apps/incident-service/src/assets"
+        ],
+        "webpackConfig": "apps/incident-service/webpack.config.js"
+      },
+      "configurations": {
+        "production": {
+          "optimization": true,
+          "extractLicenses": true,
+          "inspect": false
+        },
+        "development": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "dependsOn": [
+        "build"
+      ],
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "incident-service:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "incident-service:build:development"
+        },
+        "production": {
+          "buildTarget": "incident-service:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
