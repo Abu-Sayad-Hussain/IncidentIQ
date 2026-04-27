@@ -1,5 +1,5 @@
-import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { Controller, Logger, Inject } from '@nestjs/common';
+import { EventPattern, Payload, ClientKafka } from '@nestjs/microservices';
 import { LogMessageDto } from '@incident-iq/shared-types';
 import { AppService } from './app.service';
 
@@ -7,7 +7,10 @@ import { AppService } from './app.service';
 export class AppController {
   private readonly logger = new Logger(AppController.name);
 
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka
+  ) {}
 
   @EventPattern('logs.ingested')
   async handleLogIngestion(@Payload() message: any) {
@@ -17,8 +20,8 @@ export class AppController {
     const isAnomaly = this.appService.analyzeLog(payload);
     
     if (isAnomaly) {
-      this.logger.error(`Emitting generic Anomaly Signal for: ${payload.serviceName}`);
-      // Future: Post to `anomalies.detected` Kafka queue, trigger PagerDuty alerts, or invoke LLM API.
+      this.logger.error(`Emitting Anomaly Signal to Mesh for: ${payload.serviceName}`);
+      this.kafkaClient.emit('anomalies.detected', payload);
     }
   }
 }
