@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Incident } from './incident.entity';
@@ -23,6 +24,19 @@ import { Incident } from './incident.entity';
       }),
     }),
     TypeOrmModule.forFeature([Incident]),
+    ClientsModule.register([
+      {
+        name: 'KAFKA_SERVICE',
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            clientId: 'incident-producer',
+            brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+          },
+          producerOnlyMode: true,
+        },
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [AppService],
