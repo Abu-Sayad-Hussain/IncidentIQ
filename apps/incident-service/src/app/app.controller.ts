@@ -28,7 +28,7 @@ export class AppController {
       description: payload.message,
       serviceName: payload.serviceName,
       status: IncidentStatus.OPEN,
-      severity: payload.level === 'CRITICAL' ? IncidentSeverity.CRITICAL : IncidentSeverity.HIGH,
+      severity: payload.level === 'ERROR' ? IncidentSeverity.CRITICAL : IncidentSeverity.HIGH,
       metadata: { originalLog: payload },
     });
 
