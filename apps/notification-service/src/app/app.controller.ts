@@ -23,4 +23,10 @@ export class AppController {
       timestamp: incidentData.createdAt
     });
   }
+
+  @EventPattern('logs.ingested')
+  async handleLiveLogStream(@Payload() payload: any) {
+    const logData = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    this.appGateway.broadcastLog(logData);
+  }
 }
