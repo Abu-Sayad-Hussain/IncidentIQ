@@ -51,21 +51,23 @@ export default function Index() {
 
     // Tick the health chart every 3 seconds
     const interval = setInterval(() => {
+      // Capture current values and reset immediately OUTSIDE the state updater
+      // This prevents React Strict Mode double-invocation from zeroing the graph
+      const currentErrors = errorCountRef.current;
+      const currentInfo = infoCountRef.current;
+      
+      errorCountRef.current = 0;
+      infoCountRef.current = 0;
+
       setHealthData(prev => {
-        const newData = [
+        return [
           ...prev, 
           { 
-            time: new Date().toLocaleTimeString([], { hour12: false, second: '2-digit', minute: '2-digit' }), 
-            errors: errorCountRef.current, 
-            info: infoCountRef.current 
+            time: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }), 
+            errors: currentErrors, 
+            info: currentInfo 
           }
         ].slice(-15); // Show last 15 ticks on chart
-        
-        // Reset counters for next tick window
-        errorCountRef.current = 0;
-        infoCountRef.current = 0;
-        
-        return newData;
       });
     }, 3000);
 
