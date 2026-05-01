@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Index() {
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -11,7 +11,29 @@ export default function Index() {
   const errorCountRef = useRef(0);
   const infoCountRef = useRef(0);
 
+  const fetchIncidents = async () => {
+    try {
+      const res = await fetch('http://localhost:3004/api/incidents');
+      if (res.ok) {
+        const data = await res.json();
+        setIncidents(data.map((inc: any) => ({
+          id: inc.id,
+          title: inc.title || 'AI Generated Incident',
+          serviceName: inc.serviceName,
+          time: new Date(inc.createdAt).toLocaleTimeString(),
+          type: inc.severity === 'CRITICAL' || inc.severity === 'ERROR' ? 'danger' : 'warning',
+          status: inc.status,
+          assignedTo: inc.assignedTo
+        })));
+      }
+    } catch (e) {
+      console.error('Failed to fetch historical incidents:', e);
+    }
+  };
+
   useEffect(() => {
+    fetchIncidents(); // Hydrate state
+
     const socket = io('http://localhost:3003', {
       reconnectionDelayMax: 10000,
     });
@@ -23,17 +45,33 @@ export default function Index() {
     socket.on('incident.new', (incident) => {
       setIncidents((prev) => [
         {
-          title: incident.message || 'Incoming Anomaly Alert',
+          id: incident.id,
+          title: incident.message || incident.title || 'Incoming Anomaly Alert',
           serviceName: incident.serviceName || 'unknown-service',
-          time: 'Just now',
+          time: new Date().toLocaleTimeString(),
           type: incident.level === 'CRITICAL' || incident.level === 'ERROR' ? 'danger' : 'warning',
+          status: 'OPEN'
         },
         ...prev
-      ].slice(0, 10)); // Keep last 10 incidents
+      ].slice(0, 10));
+    });
+
+    socket.on('incident.updated', (updatedIncident) => {
+      setIncidents((prev) => {
+        // If resolved, visually remove it from the active list
+        if (updatedIncident.status === 'RESOLVED') {
+          return prev.filter(i => i.id !== updatedIncident.id);
+        }
+        // Otherwise mutate the inline state instantly
+        return prev.map(inc => 
+          inc.id === updatedIncident.id 
+            ? { ...inc, status: updatedIncident.status, assignedTo: updatedIncident.assignedTo }
+            : inc
+        );
+      });
     });
 
     socket.on('log.new', (log) => {
-      // Accumulate for charting
       if (log.level === 'ERROR' || log.level === 'CRITICAL') {
         errorCountRef.current += 1;
       } else {
@@ -42,17 +80,15 @@ export default function Index() {
 
       setLogs((prev) => [
         {
+          id: Math.random().toString(),
           text: `[${log.level}] ${log.serviceName}: ${log.message}`,
           color: log.level === 'ERROR' || log.level === 'CRITICAL' ? 'text-danger' : log.level === 'WARN' ? 'text-yellow-400' : 'text-primary'
         },
         ...prev
-      ].slice(0, 30)); // Keep last 30 logs in buffer
+      ].slice(0, 30));
     });
 
-    // Tick the health chart every 3 seconds
     const interval = setInterval(() => {
-      // Capture current values and reset immediately OUTSIDE the state updater
-      // This prevents React Strict Mode double-invocation from zeroing the graph
       const currentErrors = errorCountRef.current;
       const currentInfo = infoCountRef.current;
       
@@ -67,7 +103,7 @@ export default function Index() {
             errors: currentErrors, 
             info: currentInfo 
           }
-        ].slice(-15); // Show last 15 ticks on chart
+        ].slice(-15);
       });
     }, 3000);
 
@@ -76,6 +112,18 @@ export default function Index() {
       clearInterval(interval);
     };
   }, []);
+
+  const updateIncident = async (id: string, payload: any) => {
+    try {
+      await fetch(`http://localhost:3004/api/incidents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.error('Failed to update incident:', e);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -94,9 +142,7 @@ export default function Index() {
         ))}
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Real-time Health Chart */}
         <div className="lg:col-span-3 bg-surface rounded-xl border border-gray-800 shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
@@ -132,7 +178,7 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Recent Incidents Panel */}
+        {/* Actionable Incidents Panel */}
         <div className="lg:col-span-2 bg-surface rounded-xl border border-gray-800 shadow-sm p-6 overflow-y-auto max-h-[400px]">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-100">Actionable Incidents</h3>
@@ -151,20 +197,44 @@ export default function Index() {
               </div>
             ) : (
               incidents.map((incident, idx) => (
-                <div key={idx} className={`p-4 rounded-lg border flex justify-between items-center transition-all duration-500 ease-in-out ${
+                <div key={incident.id || idx} className={`p-4 rounded-lg border flex flex-col md:flex-row justify-between items-start md:items-center transition-all duration-500 ease-in-out gap-4 ${
                   incident.type === 'danger' ? 'bg-danger/10 border-danger/20' : 'bg-yellow-400/10 border-yellow-400/20'
                 }`}>
-                  <div>
-                    <h4 className={incident.type === 'danger' ? 'text-danger font-medium' : 'text-yellow-400 font-medium'}>
-                      {incident.title}
-                    </h4>
-                    <p className="text-sm text-gray-400 mt-1">{incident.serviceName} • {incident.time}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className={incident.type === 'danger' ? 'text-danger font-medium' : 'text-yellow-400 font-medium'}>
+                        {incident.title}
+                      </h4>
+                      {incident.status === 'IN_PROGRESS' && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                          In Progress
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {incident.serviceName} • {incident.time}
+                    </p>
+                    {incident.assignedTo && (
+                      <p className="text-xs text-blue-400 mt-1">Assigned to: {incident.assignedTo}</p>
+                    )}
                   </div>
-                  <button className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    incident.type === 'danger' ? 'bg-danger text-white hover:bg-red-600' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                  }`}>
-                    Review Context
-                  </button>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {!incident.assignedTo && (
+                      <button 
+                        onClick={() => updateIncident(incident.id, { assignedTo: 'Admin', status: 'IN_PROGRESS' })}
+                        className="px-4 py-2 bg-blue-600/20 text-blue-400 border border-blue-600/50 rounded-md text-sm font-medium hover:bg-blue-600/40 transition-colors"
+                      >
+                        Assign to Me
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => updateIncident(incident.id, { status: 'RESOLVED' })}
+                      className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/50 rounded-md text-sm font-medium hover:bg-green-500/30 transition-colors"
+                    >
+                      Mark Resolved
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -178,8 +248,8 @@ export default function Index() {
             {logs.length === 0 ? (
               <p className="text-center text-gray-600 mt-20">Awaiting Log Ingestion...</p>
             ) : (
-              logs.map((log, i) => (
-                <p key={i} className={`whitespace-nowrap overflow-hidden text-ellipsis ${log.color}`}>
+              logs.map((log) => (
+                <p key={log.id} className={`whitespace-nowrap overflow-hidden text-ellipsis ${log.color}`}>
                   {log.text}
                 </p>
               ))
