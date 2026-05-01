@@ -1,4 +1,4 @@
-import { Controller, Logger, Inject } from '@nestjs/common';
+import { Controller, Logger, Inject, Get, Patch, Param, Body } from '@nestjs/common';
 import { EventPattern, Payload, ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,10 +19,8 @@ export class AppController {
   @EventPattern('anomalies.detected')
   async handleAnomalyDetection(@Payload() message: any) {
     const payload: LogMessageDto = typeof message === 'string' ? JSON.parse(message) : message;
-    
     this.logger.log(`Incident Generation Triggered by Anomaly in ${payload.serviceName}`);
 
-    // Map log payload to Incident Database Schema
     const incident = this.incidentRepo.create({
       title: 'Automated AI Incident generated',
       description: payload.message,
@@ -32,11 +30,39 @@ export class AppController {
       metadata: { originalLog: payload },
     });
 
-    // Save to PostgreSQL strictly
     const savedIncident = await this.incidentRepo.save(incident);
     this.logger.log(`Successfully persists Incident [${savedIncident.id}] into Postgres!`);
-
-    // Emit live incident socket hook to Notification Event Mesh wrapper
     this.kafkaClient.emit('incident.new', savedIncident);
+  }
+
+  @Get('incidents')
+  async getActiveIncidents() {
+    return this.incidentRepo.find({
+      where: [
+        { status: IncidentStatus.OPEN },
+        { status: IncidentStatus.IN_PROGRESS }
+      ],
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+  }
+
+  @Patch('incidents/:id')
+  async updateIncident(@Param('id') id: string, @Body() updateData: Partial<Incident>) {
+    const incident = await this.incidentRepo.findOne({ where: { id } });
+    if (!incident) {
+      return null; // For simplicity in this demo, return null if not found
+    }
+
+    if (updateData.status) incident.status = updateData.status;
+    if (updateData.assignedTo !== undefined) incident.assignedTo = updateData.assignedTo;
+
+    const updatedIncident = await this.incidentRepo.save(incident);
+    
+    // Broadcast the update into the Event Mesh
+    this.logger.log(`Incident ${id} updated, broadcasting event...`);
+    this.kafkaClient.emit('incident.updated', updatedIncident);
+
+    return updatedIncident;
   }
 }
