@@ -21,6 +21,10 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('incident.new', incidentData);
   }
 
+  broadcastIncidentUpdate(incidentData: any) {
+    this.server.emit('incident.updated', incidentData);
+  }
+
   broadcastLog(logData: any) {
     this.server.emit('log.new', logData);
   }
