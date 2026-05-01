@@ -24,6 +24,13 @@ export class AppController {
     });
   }
 
+  @EventPattern('incident.updated')
+  async handleIncidentUpdate(@Payload() payload: any) {
+    const incidentData = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    this.logger.log(`Incident ${incidentData.id} updated to status: ${incidentData.status}`);
+    this.appGateway.broadcastIncidentUpdate(incidentData);
+  }
+
   @EventPattern('logs.ingested')
   async handleLiveLogStream(@Payload() payload: any) {
     const logData = typeof payload === 'string' ? JSON.parse(payload) : payload;
