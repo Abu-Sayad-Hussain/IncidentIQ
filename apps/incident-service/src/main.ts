@@ -22,6 +22,7 @@ async function bootstrap() {
     },
   });
 
+  app.enableCors(); // Enable CORS for the Dashboard UI
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
   const port = process.env.PORT || 3004; // Distinct port
